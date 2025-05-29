@@ -33,6 +33,13 @@ st.set_page_config(
     initial_sidebar_state=config['app']['INITIAL_SIDEBAR_STATE']
 )
 
+# Default issue types for each tab
+DEFAULT_ISSUE_TYPES = {
+    'weekly_activity': ['Bug', 'Task', 'Story', 'Epic', 'Enhancement', 'Support', 'Sub-task'],
+    'priority_dashboard': ['Bug', 'Task', 'Story', 'Epic', 'Enhancement', 'Support', 'Sub-task'],
+    'last_week_completed': ['Task', 'Bug', 'Enhancement', 'Support', 'Epic', 'Story']
+}
+
 # Custom CSS for better styling
 st.markdown("""
 <style>
@@ -105,6 +112,23 @@ st.markdown("""
         margin-bottom: 1.5rem;
         border: 1px solid #b3d9ff;
     }
+    .issue-type-filter {
+        background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #b3d9ff;
+    }
+    .filter-badge {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 0.2rem 0.6rem;
+        border-radius: 0.8rem;
+        font-size: 0.8rem;
+        margin: 0.1rem;
+        display: inline-block;
+        border: 1px solid #bbdefb;
+    }
     .stMetric {
         background: white;
         padding: 1rem;
@@ -141,6 +165,10 @@ def initialize_session_state():
         st.session_state.last_refresh = None
     if 'config' not in st.session_state:
         st.session_state.config = get_config()
+    
+    # Initialize issue type filters for each tab if not exists
+    if 'issue_type_filters' not in st.session_state:
+        st.session_state.issue_type_filters = DEFAULT_ISSUE_TYPES.copy()
 
 def get_jira_client():
     """Get or create JIRA client instance"""
@@ -153,6 +181,85 @@ def get_jira_client():
             st.error(f"Failed to connect to JIRA: {str(e)}")
             return None
     return st.session_state.jira_client
+
+def render_issue_type_filter(tab_name: str, description: str = ""):
+    """Render issue type filter display and controls for a specific tab"""
+    with st.expander(f"🏷️ Issue Type Filter - {tab_name.replace('_', ' ').title()}", expanded=False):
+        st.markdown(f"""
+        <div class="issue-type-filter">
+            <h4>📋 Current Issue Type Filter</h4>
+            <p><strong>Description:</strong> {description}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Show current active filters
+        current_filters = st.session_state.issue_type_filters.get(tab_name, DEFAULT_ISSUE_TYPES[tab_name])
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown("**Currently Active Issue Types:**")
+            filter_display = " ".join([f'<span class="filter-badge">{issue_type}</span>' for issue_type in current_filters])
+            st.markdown(filter_display, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"**Total Types:** {len(current_filters)}")
+        
+        # Allow users to modify the filter
+        st.markdown("---")
+        st.markdown("**Customize Issue Type Filter:**")
+        
+        # Available issue types (comprehensive list)
+        all_issue_types = ['Bug', 'Task', 'Story', 'Epic', 'Enhancement', 'Support', 'Sub-task', 'Improvement', 'New Feature']
+        
+        new_filters = st.multiselect(
+            "Select issue types to include:",
+            options=all_issue_types,
+            default=current_filters,
+            help=f"Choose which issue types to display in the {tab_name.replace('_', ' ').title()} tab",
+            key=f"issue_filter_{tab_name}"
+        )
+        
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        with col1:
+            if st.button(f"Update Filter", key=f"update_filter_{tab_name}"):
+                st.session_state.issue_type_filters[tab_name] = new_filters
+                st.cache_data.clear()  # Clear cache to force refresh
+                st.success("✅ Filter updated! Data will refresh automatically.")
+                st.rerun()
+        
+        with col2:
+            if st.button(f"Reset to Default", key=f"reset_filter_{tab_name}"):
+                st.session_state.issue_type_filters[tab_name] = DEFAULT_ISSUE_TYPES[tab_name].copy()
+                st.cache_data.clear()  # Clear cache to force refresh
+                st.success("✅ Filter reset to default!")
+                st.rerun()
+        
+        with col3:
+            if not new_filters:
+                st.warning("⚠️ Select at least one issue type")
+
+def filter_dataframe_by_issue_types(df: pd.DataFrame, tab_name: str) -> pd.DataFrame:
+    """Filter dataframe by the current issue type filter for the specified tab"""
+    if df.empty:
+        return df
+    
+    # Get current filters for this tab
+    current_filters = st.session_state.issue_type_filters.get(tab_name, DEFAULT_ISSUE_TYPES[tab_name])
+    
+    # Check if the dataframe has an issue_type column
+    if 'issue_type' in df.columns:
+        # Filter by issue types
+        filtered_df = df[df['issue_type'].isin(current_filters)]
+        return filtered_df
+    elif 'Issue Type' in df.columns:
+        # Handle renamed column case
+        filtered_df = df[df['Issue Type'].isin(current_filters)]
+        return filtered_df
+    else:
+        # If no issue type column, return original dataframe
+        return df
 
 def render_header():
     """Render application header"""
@@ -236,6 +343,12 @@ def show_weekly_activity(selected_members):
     """Display weekly activity tab with global team filtering"""
     st.header("📈 Weekly JIRA Issue Activity")
     
+    # Add issue type filter display
+    render_issue_type_filter(
+        "weekly_activity", 
+        "Shows all JIRA issues that were updated or created in the selected time period. No specific issue type restrictions are applied by default."
+    )
+    
     # Initialize JIRA client if needed
     jira_client = get_jira_client()
     if jira_client is None:
@@ -276,6 +389,13 @@ def show_weekly_activity(selected_members):
     
     if df.empty:
         st.warning(f"📭 No issues found for the selected team members in the last {days_back} days.")
+        return
+    
+    # Apply issue type filter first
+    df = filter_dataframe_by_issue_types(df, "weekly_activity")
+    
+    if df.empty:
+        st.warning(f"📭 No issues found matching the selected issue types.")
         return
     
     # Apply status filter
@@ -417,6 +537,12 @@ def render_priority_dashboard_tab(selected_members):
     """Render the Priority Dashboard tab with enhanced criteria and global team filtering"""
     st.header("🎯 Priority Dashboard")
     
+    # Add issue type filter display
+    render_issue_type_filter(
+        "priority_dashboard", 
+        "Displays issues in Development status (Current) and To Do/Backlog status (Up Next). Supports all issue types including Epics, Stories, Tasks, and Bugs."
+    )
+    
     jira_client = get_jira_client()
     if jira_client is None:
         return
@@ -478,6 +604,10 @@ def render_priority_dashboard_tab(selected_members):
     with st.spinner("🔄 Fetching priority issues with enhanced criteria..."):
         current_priorities_df = jira_client.get_enhanced_priority_issues("current", selected_members)
         up_next_priorities_df = jira_client.get_enhanced_priority_issues("up_next", selected_members)
+    
+    # Apply issue type filtering to both datasets
+    current_priorities_df = filter_dataframe_by_issue_types(current_priorities_df, "priority_dashboard")
+    up_next_priorities_df = filter_dataframe_by_issue_types(up_next_priorities_df, "priority_dashboard")
     
     # Current Priorities Section
     st.subheader("🔥 Current Priorities (Due This Week & In Progress)")
@@ -743,7 +873,14 @@ def render_priority_dashboard_tab(selected_members):
 def render_last_week_completed_tab(selected_members):
     """Render Last Week Completed tab with filtered issues"""
     st.markdown('<div class="tab-header">📋 Last Week Completed</div>', unsafe_allow_html=True)
-    st.markdown("*Issues of type Task, Bug, or Enhancement that were completed last week*")
+    
+    # Add issue type filter display
+    render_issue_type_filter(
+        "last_week_completed", 
+        "Shows issues completed last week. Originally filtered to Task, Bug, Enhancement only, now expanded to include Support, Epic, and Story types for complete visibility."
+    )
+    
+    st.markdown("*Issues that were completed during the previous week (Monday to Sunday)*")
     
     if not selected_members:
         st.warning("⚠️ Please select at least one team member from the sidebar to view completed issues.")
@@ -763,9 +900,17 @@ def render_last_week_completed_tab(selected_members):
         st.markdown("""
         **This could mean:**
         - No issues were completed during last week
-        - All completed issues were of types other than Task, Bug, or Enhancement
         - Selected team members had no completed work last week
+        - Issues don't match the current issue type filter
         """)
+        return
+    
+    # Apply issue type filtering
+    completed_df = filter_dataframe_by_issue_types(completed_df, "last_week_completed")
+    
+    if completed_df.empty:
+        st.info("✅ No completed issues found matching the selected issue type filters.")
+        st.markdown("Try adjusting the issue type filter above to include more issue types.")
         return
     
     # Display summary metrics
@@ -806,6 +951,23 @@ def render_last_week_completed_tab(selected_members):
             <h2 style='margin: 0; color: #ffc107;'>{enhancement_count}</h2>
         </div>
         """, unsafe_allow_html=True)
+    
+    # Add additional metrics for the expanded issue types
+    issue_type_counts = completed_df['issue_type'].value_counts()
+    if len(issue_type_counts) > 3:  # If we have more than just Task, Bug, Enhancement
+        st.markdown("### 📈 Additional Issue Type Breakdown")
+        cols = st.columns(min(len(issue_type_counts), 6))  # Max 6 columns
+        for i, (issue_type, count) in enumerate(issue_type_counts.items()):
+            if issue_type not in ['Task', 'Bug', 'Enhancement'] and i < 6:
+                col_idx = (i - 3) % len(cols)  # Skip the first 3 which are shown above
+                with cols[col_idx]:
+                    icon = "📊" if issue_type == "Epic" else "🔧" if issue_type == "Support" else "📖" if issue_type == "Story" else "🎯"
+                    st.markdown(f"""
+                    <div class='metric-card'>
+                        <h4 style='margin: 0; color: #6f42c1;'>{icon} {issue_type}s</h4>
+                        <h2 style='margin: 0; color: #6f42c1;'>{count}</h2>
+                    </div>
+                    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
