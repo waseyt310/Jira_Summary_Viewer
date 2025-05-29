@@ -28,14 +28,14 @@ def get_jira_credentials():
 # JIRA Configuration - will be populated from secrets/env vars
 JIRA_CONFIG = get_jira_credentials()
 
-# Team Members Configuration
+# Team Members Configuration - Updated to use JIRA display names for proper filtering
 TEAM_MEMBERS = {
-    "Waseyt Ibrahim": "waseyt.ibrahim@spreetail.com",
-    "Donn Mailing": "donn.mailing@spreetail.com", 
-    "Edu Cielo": "edu.cielo@spreetail.com",
-    "Mohammad Asim": "mohammad.asim@spreetail.com",
-    "Ryan Kieselhorst": "ryan.kieselhorst@spreetail.com",
-    "Shawn Parry": "shawn.parry@spreetail.com"
+    "Waseyt Ibrahim": "Waseyt Ibrahim",
+    "Donn Mailing": "Donn Mailing", 
+    "Edu Cielo": "Edu Cielo",
+    "Mohammad Asim": "Mohammad Asim",
+    "Ryan Kieselhorst": "Ryan Kieselhorst",
+    "Shawn Parry": "Shawn Parry"
 }
 
 # Application Settings
