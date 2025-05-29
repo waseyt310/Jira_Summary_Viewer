@@ -31,7 +31,7 @@ JIRA_CONFIG = get_jira_credentials()
 # Team Members Configuration - Using email addresses for JIRA filtering
 TEAM_MEMBERS = {
     "Waseyt Ibrahim": "waseyt.ibrahim@spreetail.com",
-    "Donn Mailing": "donn.mailing@spreetail.com", 
+    "Donn Maling": "donn.maling@spreetail.com", 
     "Edu Cielo": "edu.cielo@spreetail.com",
     "Mohammad Asim": "mohammad.asim@spreetail.com",
     "Ryan Kieselhorst": "ryan.kieselhorst@spreetail.com",
