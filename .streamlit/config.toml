@@ -1,0 +1,35 @@
+[global]
+# Set to true to disable the global development options (enables privacy and security)
+developmentMode = false
+
+# Theme for the app
+[theme]
+primaryColor = "#3498db"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+
+# Server configuration
+[server]
+# The port where the server will listen for client and browser connections
+port = 8501
+
+# Enables support for websocket compression
+enableWebsocketCompression = false
+
+# Max size for a single HTTP request, in MB
+maxUploadSize = 200
+
+# Enables CORS support
+enableCORS = false
+
+# Browser configuration
+[browser]
+# Whether to automatically open the browser when starting streamlit
+gatherUsageStats = false
+
+# Logging configuration
+[logger]
+# Level of logging: 'error', 'warning', 'info', or 'debug'
+level = "info" 
