@@ -589,10 +589,10 @@ class JIRAClient:
     
     @st.cache_data(ttl=300, hash_funcs={"builtins.list": lambda x: str(sorted(x)) if x else "all"})  # Cache for 5 minutes with proper team member hashing
     def get_last_week_completed(_self, selected_members: List[str] = None) -> pd.DataFrame:
-        """Get issues completed last week filtered by Task, Bug, Enhancement types"""
+        """Get issues completed last week for all relevant issue types"""
         try:
-            # Build JQL for last week completed issues
-            base_jql = "assignee = currentUser() AND status = Done AND updated >= startOfWeek(-1w) AND updated < startOfWeek() AND issueType in (Task, Bug, Enhancement)"
+            # Build JQL for last week completed issues - expanded to include all work item types
+            base_jql = "assignee = currentUser() AND status = Done AND updated >= startOfWeek(-1w) AND updated < startOfWeek() AND issueType in (Task, Bug, Enhancement, Support, Epic, Story)"
             
             if selected_members:
                 # Get email addresses for selected members
@@ -605,7 +605,7 @@ class JIRAClient:
                 if member_emails:
                     # Replace currentUser() with actual team member emails
                     assignee_filter = " OR ".join([f'assignee = "{email}"' for email in member_emails])
-                    base_jql = f"({assignee_filter}) AND status = Done AND updated >= startOfWeek(-1w) AND updated < startOfWeek() AND issueType in (Task, Bug, Enhancement)"
+                    base_jql = f"({assignee_filter}) AND status = Done AND updated >= startOfWeek(-1w) AND updated < startOfWeek() AND issueType in (Task, Bug, Enhancement, Support, Epic, Story)"
                 else:
                     # No valid team members, return empty
                     return pd.DataFrame()
