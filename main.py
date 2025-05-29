@@ -220,6 +220,16 @@ def render_global_sidebar():
         - Priority Dashboard: Automatic status-based filtering
         """)
         
+        if st.button("🔄 Force Refresh", help="Clear cache and fetch fresh data from JIRA"):
+            # Clear all Streamlit cache
+            st.cache_data.clear()
+            st.rerun()
+        
+        # Debug info for selected team members
+        if st.checkbox("🔍 Debug Info", help="Show selected team members for troubleshooting"):
+            st.write("**Selected Members:**", selected_members)
+            st.write("**Total Selected:**", len(selected_members))
+        
         return selected_members
 
 def show_weekly_activity(selected_members):

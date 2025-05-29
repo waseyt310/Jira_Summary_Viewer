@@ -71,7 +71,7 @@ class JIRAClient:
             st.error(f"Error fetching weekly activity: {str(e)}")
             return pd.DataFrame()
     
-    @st.cache_data(ttl=300)  # Cache for 5 minutes
+    @st.cache_data(ttl=300, hash_funcs={"builtins.list": lambda x: str(sorted(x)) if x else "all"})  # Cache for 5 minutes with proper team member hashing
     def get_team_weekly_activity(_self, days_back: int = 7, selected_members: List[str] = None) -> pd.DataFrame:
         """Get JIRA issues updated in the last N days filtered by team members"""
         try:
@@ -496,7 +496,7 @@ class JIRAClient:
             logger.error(f"Error fetching team {priority_type} priority issues: {str(e)}")
             return pd.DataFrame()
     
-    @st.cache_data(ttl=60)  # Cache for 1 minute - faster updates for Priority Dashboard
+    @st.cache_data(ttl=60, hash_funcs={"builtins.list": lambda x: str(sorted(x)) if x else "all"})  # Cache for 1 minute with proper team member hashing
     def get_enhanced_priority_issues(_self, priority_type: str = "current", selected_members: List[str] = None) -> pd.DataFrame:
         """Get priority issues with enhanced criteria for Development status and To Do items"""
         try:
@@ -587,7 +587,7 @@ class JIRAClient:
             logger.error(f"Error fetching enhanced {priority_type} priority issues: {str(e)}")
             return pd.DataFrame()
     
-    @st.cache_data(ttl=300)  # Cache for 5 minutes
+    @st.cache_data(ttl=300, hash_funcs={"builtins.list": lambda x: str(sorted(x)) if x else "all"})  # Cache for 5 minutes with proper team member hashing
     def get_last_week_completed(_self, selected_members: List[str] = None) -> pd.DataFrame:
         """Get issues completed last week filtered by Task, Bug, Enhancement types"""
         try:
